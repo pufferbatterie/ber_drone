@@ -1,0 +1,93 @@
+<link rel="stylesheet" href="static/leaflet.css"/>
+<script src="static/leaflet.js"></script>
+<!-- <script src="static/Leaflet.Marker.SlideTo.js"></script> -->
+<div id="map"></div>
+<style>
+    #map {
+        height: 95%;
+        width: 80%;
+    }
+
+    .leaflet-marker-pane > * {
+        /* mte hack to smoothen out marker movement:
+           * dont start @ pos 0:0
+           * TODO:  WILL INFER WITH ZOOM!!!
+        */
+        -webkit-transition: transform .5s linear;
+        -moz-transition: transform .5s linear;
+        -o-transition: transform .5s linear;
+        -ms-transition: transform .5s linear;
+        transition: transform .5s linear;
+    }
+</style>
+<script>
+    /**
+     * https://leafletjs.com/examples/quick-start/
+     */
+    const zoomLevel = 17;
+    let map = L.map('map');
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+    //map.setView([0, 0], zoomLevel); // not working with css -> inti on first data
+    let marker = null;
+
+    // https://stackoverflow.com/questions/28636723/how-to-clear-leaflet-map-of-all-markers-and-layers-before-adding-new-ones
+    let map_layerGroupMarker = L.layerGroup().addTo(map);   // not needed anymore since marker.setLatLng() ?
+
+    /**
+     * //https://leafletjs.com/examples/custom-icons/
+     */
+    let leafletDroneIcob = L.icon({
+        iconUrl: 'static/vecteezy_drone-transparent-sign_12104320.png',
+        //shadowUrl: 'leaf-shadow.png',
+        iconSize: [38, 95], // size of the icon
+        shadowSize: [50, 64], // size of the shadow
+        iconAnchor: [22, 94], // point of the icon which will correspond to marker's location
+        shadowAnchor: [4, 62],  // the same for the shadow
+        popupAnchor: [-3, -76] // point from which the popup should open relative to the iconAnchor
+    });
+
+
+    function set_marker(x, y) {
+
+        // reset marker position
+        if (marker == null) {
+            marker = L.marker([x, y], {
+                icon: leafletDroneIcob
+            }).addTo(map_layerGroupMarker).bindPopup("Mittagspause @ BILLA");
+        }
+
+        marker.setLatLng([x, y]);
+        map.setView([x, y], map.getZoom() || zoomLevel);
+
+        /*
+        // TODO: buffer on client and smooth transition via https://gitlab.com/IvanSanchez/Leaflet.Marker.SlideTo
+        // maybe not needed with css hack
+        marker.slideTo([x, y], {
+            duration: 20,
+            keepAtCenter: true
+        });
+        */
+    }
+
+    let ws = new WebSocket(`ws://${location.host}/ws`);
+
+    ws.onopen = function () {
+        console.log('connected');
+        // setInterval(function () {            ws.send("ah");        }, 2000);
+    }
+
+    ws.onmessage = function (e) {
+        /**
+         * NAIVE rendering by clearing markers and drawing it new
+         */
+        let coordinates = JSON.parse(e.data);
+        let x = coordinates[0];
+        let y = coordinates[1];
+        console.log(`x:${x}, y:${y}`);
+        set_marker(x, y);
+    }
+
+</script>

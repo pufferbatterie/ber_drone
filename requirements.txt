@@ -1,0 +1,5 @@
+# https://stackoverflow.com/a/66899811
+
+fastapi
+uvicorn
+websockets

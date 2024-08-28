@@ -18,8 +18,3 @@ def generate_route(c_from: Tuple[float, float],
 
     return [(c_from[0] + i * x_step, c_from[1] + i * y_step) for i in range(steps)]
 
-    # same
-    #route = []
-    #for i in range(steps):
-    #    route.append((c_from[0] + i * x_step, c_from[1] + i * y_step))
-    #return route

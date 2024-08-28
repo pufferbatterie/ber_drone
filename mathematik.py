@@ -15,7 +15,11 @@ def generate_route(c_from: Tuple[float, float],
     d_y = c_to[1] - c_from[1]
     x_step = d_x / steps
     y_step = d_y / steps
-    route = []
-    for i in range(steps):
-        route.append((c_from[0] + i * x_step, c_from[1] + i * y_step))
-    return route
+
+    return [(c_from[0] + i * x_step, c_from[1] + i * y_step) for i in range(steps)]
+
+    # same
+    #route = []
+    #for i in range(steps):
+    #    route.append((c_from[0] + i * x_step, c_from[1] + i * y_step))
+    #return route

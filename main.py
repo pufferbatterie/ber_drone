@@ -8,6 +8,7 @@ from fastapi.websockets import WebSocket
 from sqlmodel import Session
 from WSConnectionmanager import ConnectionManager
 from database import get_session, insert_testdata, get_statement_last
+from drone_position import DronePosition
 from mathematik import generate_route
 
 ANIMATION_SECS = 15
@@ -33,6 +34,9 @@ async def serial_loop():
             for coordinate in generate_route(COORDINATE_SUN21, COORDINATE_BILLA, ANIMATION_STEPS):
                 await asyncio.sleep(t_sleep)
                 await manager.broadcast_json(coordinate)
+                for s in get_session():
+                    s.add(DronePosition(t=datetime.datetime.now(), longitude=coordinate[0], latitude=coordinate[1], drone_id='c'))
+                    s.commit()
 
             my_log(f"Simulation loop {i} done")
         except Exception as e:

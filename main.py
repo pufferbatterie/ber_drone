@@ -1,4 +1,5 @@
 import asyncio, datetime, uvicorn
+import random
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends
 from fastapi.encoders import jsonable_encoder
@@ -33,9 +34,13 @@ async def serial_loop():
             t_sleep = ANIMATION_SECS / ANIMATION_STEPS
             for coordinate in generate_route(COORDINATE_SUN21, COORDINATE_BILLA, ANIMATION_STEPS):
                 await asyncio.sleep(t_sleep)
-                await manager.broadcast_json(coordinate)
+                await manager.broadcast_json(['c', *coordinate])
+                random_offset_x = (0.5 - random.random()) * 0.002
+                random_offset_y = (0.5 - random.random()) * 0.003
+                await manager.broadcast_json(['d', coordinate[0] + random_offset_x, coordinate[1] + random_offset_y])
                 for s in get_session():
-                    s.add(DronePosition(t=datetime.datetime.now(), longitude=coordinate[0], latitude=coordinate[1], drone_id='c'))
+                    s.add(DronePosition(t=datetime.datetime.now(), longitude=coordinate[0], latitude=coordinate[1],
+                                        drone_id='c'))
                     # s.add(DronePosition(t=datetime.datetime.now(), longitude=coordinate[0], latitude=coordinate[1], drone_id='d')) # to compare /droneposition
                     s.commit()
 

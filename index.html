@@ -31,7 +31,7 @@
         attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(map);
     //map.setView([0, 0], zoomLevel); // not working with css -> inti on first data
-    let marker = null;
+    let markers = {}
 
     // https://stackoverflow.com/questions/28636723/how-to-clear-leaflet-map-of-all-markers-and-layers-before-adding-new-ones
     let map_layerGroupMarker = L.layerGroup().addTo(map);   // not needed anymore since marker.setLatLng() ?
@@ -50,26 +50,23 @@
     });
 
 
-    function set_marker(x, y) {
+    function set_marker(marker_name, x, y) {
 
+        marker = markers[marker_name];
         // reset marker position
-        if (marker == null) {
+        if (marker === undefined) {
             marker = L.marker([x, y], {
                 icon: leafletDroneIcob
             }).addTo(map_layerGroupMarker).bindPopup("Mittagspause @ BILLA");
+            markers[marker_name] = marker;
         }
 
-        marker.setLatLng([x, y]);
-        map.setView([x, y], map.getZoom() || zoomLevel);
+        markers[marker_name].setLatLng([x, y]);
 
-        /*
-        // TODO: buffer on client and smooth transition via https://gitlab.com/IvanSanchez/Leaflet.Marker.SlideTo
-        // maybe not needed with css hack
-        marker.slideTo([x, y], {
-            duration: 20,
-            keepAtCenter: true
-        });
-        */
+        if (marker_name === 'c'){
+            // hardcoded follow just for drone c
+            map.setView([x, y], map.getZoom() || zoomLevel);
+        }
     }
 
     let ws = new WebSocket(`ws://${location.host}/ws`);
@@ -83,11 +80,12 @@
         /**
          * NAIVE rendering by clearing markers and drawing it new
          */
-        let coordinates = JSON.parse(e.data);
-        let x = coordinates[0];
-        let y = coordinates[1];
-        console.log(`x:${x}, y:${y}`);
-        set_marker(x, y);
+        let data = JSON.parse(e.data);
+        let drone_id = data[0];
+        let x = data[1];
+        let y = data[2];
+        console.log(`drone_id: ${drone_id} # x:${x}, y:${y}`);
+        set_marker(drone_id, x, y);
     }
 
 </script>

@@ -1,10 +1,11 @@
-from starlette.websockets import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket, WebSocketDisconnect
 
 
 class ConnectionManager:
     """
     https://fastapi.tiangolo.com/advanced/websockets/#handling-disconnections-and-multiple-clients
     """
+
     def __init__(self):
         self.active_connections: list[WebSocket] = []
 

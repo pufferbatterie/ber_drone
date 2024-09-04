@@ -1,9 +1,7 @@
 import asyncio
 import datetime
-import decimal
-import json
+from contextlib import asynccontextmanager
 from typing import Any
-
 import sqlalchemy
 import uvicorn
 from fastapi.encoders import jsonable_encoder
@@ -14,6 +12,7 @@ from fastapi.websockets import WebSocket, WebSocketDisconnect
 from sqlalchemy import create_engine, select, Select, func
 from sqlmodel import SQLModel, Session
 
+from WSConnectionmanager import ConnectionManager
 from drone_position import DronePosition
 from mathematik import generate_route
 
@@ -21,6 +20,11 @@ ANIMATION_SECS = 15
 ANIMATION_STEPS = 100
 COORDINATE_SUN21 = (48.36866181183537, 16.504183702854686)
 COORDINATE_BILLA = (48.37583025859448, 16.50760671963752)
+
+
+def my_log(msg: str):
+    """ use module logging !!"""
+    print(f'{datetime.datetime.now()} # {msg}')
 
 
 def get_session():
@@ -41,13 +45,39 @@ def get_session():
         yield s
 
 
-app = FastAPI()
+async def serial_loop():
+    global data_queue  # dont use globals!
+    i = 1
+    my_log(f"Simulation loop {i} start")
+    while True:
+        try:
+
+            t_sleep = ANIMATION_SECS / ANIMATION_STEPS
+            for coordinate in generate_route(COORDINATE_SUN21, COORDINATE_BILLA, ANIMATION_STEPS):
+                await asyncio.sleep(t_sleep)
+                # await data_queue.put(coordinate)  # from serial port
+                await manager.broadcast_json(coordinate)
+
+            my_log(f"Simulation loop {i} done")
+        except Exception as e:
+            print(f'TODO: specific ex: {e}')
+        finally:
+            await asyncio.sleep(1)  # guard
+        i += 1
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    my_log("app startup")
+    asyncio.create_task(serial_loop())
+    yield  # app running
+    my_log("app shutdoen")
+
+
+data_queue = asyncio.Queue()
+manager = ConnectionManager()
+app = FastAPI(lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
-
-def my_log(msg: str):
-    """ use module logging !!"""
-    print(f'{datetime.datetime.now()} # {msg}')
 
 
 @app.get("/")
@@ -59,16 +89,10 @@ async def get():
 async def ws_con_handler(websocket: WebSocket):
     """ using fastapis websocket implementation... (other than https://pypi.org/project/websockets/)"""
     client_absender = f'{websocket.client.host}:{websocket.client.port}'
-    try:
-        await websocket.accept()
-        my_log(f"New connection from {client_absender}")
-        t_sleep = ANIMATION_SECS / ANIMATION_STEPS
-        for coordinate in generate_route(COORDINATE_SUN21, COORDINATE_BILLA, ANIMATION_STEPS):
-            await websocket.send_json(coordinate)
-            await asyncio.sleep(t_sleep)
-        my_log(f'{client_absender} done :)')
-    except WebSocketDisconnect:
-        my_log(f'{client_absender} left :(')
+    await manager.connect(websocket)
+    while websocket in manager.active_connections:
+        await asyncio.sleep(1)
+    print(f'exited {client_absender}')
 
 
 @app.get("/droneposition")
@@ -77,8 +101,8 @@ def create_hero(*, session: Session = Depends(get_session)):
     [["2024-01-01T00:05:00","a",1.3,2.4,1],["2024-01-01T01:00:00","b",5.6,1.2,1]]
     """
     rs = session.exec(get_statement_last())
-    data = [r._data for r in rs]    # hack1 to json
-    return JSONResponse(content=jsonable_encoder(data)) # hack2 to json
+    data = [r._data for r in rs]  # hack1 to json
+    return JSONResponse(content=jsonable_encoder(data))  # hack2 to json
 
 
 def get_statement_last() -> Select[Any]:

@@ -36,6 +36,7 @@ async def serial_loop():
                 await manager.broadcast_json(coordinate)
                 for s in get_session():
                     s.add(DronePosition(t=datetime.datetime.now(), longitude=coordinate[0], latitude=coordinate[1], drone_id='c'))
+                    # s.add(DronePosition(t=datetime.datetime.now(), longitude=coordinate[0], latitude=coordinate[1], drone_id='d')) # to compare /droneposition
                     s.commit()
 
             my_log(f"Simulation loop {i} done")
